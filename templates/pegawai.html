@@ -1,0 +1,89 @@
+{% extends "base.html" %} {% block title %}Daftar Pegawai - Absensi Face
+Recognition{% endblock %} {% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1><i class="fas fa-users"></i> Daftar Pegawai</h1>
+    <p class="subtitle">Kelola data pegawai terdaftar</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <i class="fas fa-list"></i> Semua Pegawai ({{ employees|length }})
+      </h2>
+      <a href="{{ url_for('registrasi') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Tambah Pegawai
+      </a>
+    </div>
+    <div class="card-body">
+      {% if employees %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID Pegawai</th>
+              <th>Nama</th>
+              <th>Departemen</th>
+              <th>Jabatan</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in employees %}
+            <tr>
+              <td><strong>{{ employee[0] }}</strong></td>
+              <td>{{ employee[1] }}</td>
+              <td>{{ employee[2] if employee[2] else '-' }}</td>
+              <td>{{ employee[3] if employee[3] else '-' }}</td>
+              <td>
+                <button
+                  onclick="deleteEmployee('{{ employee[0] }}', '{{ employee[1] }}')"
+                  class="btn btn-danger btn-sm"
+                >
+                  <i class="fas fa-trash"></i> Hapus
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-users-slash"></i>
+        <p>Belum ada pegawai terdaftar</p>
+        <a href="{{ url_for('registrasi') }}" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Tambah Pegawai Pertama
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  function deleteEmployee(employeeId, name) {
+    if (
+      confirm(
+        `Hapus pegawai ${name} (${employeeId})?\n\nData tidak dapat dikembalikan!`
+      )
+    ) {
+      fetch(`/pegawai/delete/${employeeId}`, {
+        method: "POST",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert(data.message);
+            location.reload();
+          } else {
+            alert("Error: " + data.message);
+          }
+        })
+        .catch((error) => {
+          alert("Terjadi kesalahan: " + error);
+        });
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,339 @@
+{% extends "base.html" %} {% block title %}Registrasi Pegawai - Absensi Face
+Recognition{% endblock %} {% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1><i class="fas fa-user-plus"></i> Registrasi Pegawai Baru</h1>
+    <p class="subtitle">Daftarkan pegawai baru dengan foto wajah</p>
+  </div>
+
+  <div
+    class="registration-container"
+    style="
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 24px;
+    "
+  >
+    <div
+      class="registration-form"
+      style="
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        max-width: 700px;
+        width: 100%;
+        margin: 0 auto;
+      "
+    >
+      <form id="registrationForm" style="width: 100%">
+        <div class="form-group">
+          <label for="employee_id"
+            ><i class="fas fa-id-card"></i> ID Pegawai *</label
+          >
+          <input
+            type="text"
+            id="employee_id"
+            name="employee_id"
+            required
+            placeholder="Contoh: EMP001"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="name"><i class="fas fa-user"></i> Nama Lengkap *</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            placeholder="Nama lengkap pegawai"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="department"
+            ><i class="fas fa-building"></i> Departemen</label
+          >
+          <input
+            type="text"
+            id="department"
+            name="department"
+            placeholder="Contoh: IT, HRD, Finance"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="position"><i class="fas fa-briefcase"></i> Jabatan</label>
+          <input
+            type="text"
+            id="position"
+            name="position"
+            placeholder="Contoh: Staff, Manager"
+          />
+        </div>
+
+        <div class="form-group">
+          <label><i class="fas fa-camera"></i> Foto Wajah *</label>
+          <div style="margin-bottom: 10px">
+            <label style="font-weight: 600; color: #222">Pilih Kamera:</label>
+            <select
+              id="cameraSelect"
+              style="
+                width: 100%;
+                max-width: 320px;
+                padding: 8px 12px;
+                border-radius: 8px;
+                border: 1px solid #bdbdbd;
+                font-size: 1rem;
+              "
+            ></select>
+          </div>
+          <div
+            class="camera-container"
+            style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 10px;
+            "
+          >
+            <video
+              id="video"
+              autoplay
+              playsinline
+              width="320"
+              height="240"
+              style="background: #000; border-radius: 10px; display: block"
+            ></video>
+            <canvas id="canvas" style="display: none"></canvas>
+            <div
+              id="captured-preview"
+              style="display: none; text-align: center"
+            >
+              <img
+                id="preview-image"
+                alt="Preview"
+                style="
+                  max-width: 320px;
+                  border-radius: 10px;
+                  margin-bottom: 8px;
+                "
+              />
+              <button
+                type="button"
+                onclick="retakePhoto()"
+                class="btn btn-warning btn-sm btn-retake"
+                style="margin-top: 4px"
+              >
+                <i class="fas fa-redo"></i> Foto Ulang
+              </button>
+            </div>
+          </div>
+          <div class="camera-controls">
+            <button
+              type="button"
+              id="captureBtn"
+              onclick="capturePhoto()"
+              class="btn btn-secondary"
+            >
+              <i class="fas fa-camera"></i> Ambil Foto
+            </button>
+            <span id="capture-status" class="status-text"></span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save"></i> Daftar Pegawai
+          </button>
+          <button
+            type="button"
+            onclick="resetForm()"
+            class="btn btn-secondary btn-lg"
+          >
+            <i class="fas fa-times"></i> Bersihkan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  let video = document.getElementById("video");
+  let canvas = document.getElementById("canvas");
+  let capturedImageData = null;
+
+  // SweetAlert2 helper
+  function showAlert(message, type = "info") {
+    if (typeof Swal !== "undefined") {
+      Swal.fire({
+        title:
+          type === "success" ? "Berhasil" : type === "error" ? "Gagal" : "Info",
+        text: message,
+        icon: type,
+        timer: 3500,
+        showConfirmButton: false,
+        timerProgressBar: true,
+        position: "top-end",
+        toast: true,
+      });
+    } else {
+      alert(message);
+    }
+  }
+  if (typeof Swal === "undefined") {
+    const swalScript = document.createElement("script");
+    swalScript.src = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
+    document.head.appendChild(swalScript);
+  }
+
+  // Kamera: dropdown dan akses
+  let cameraSelect = document.getElementById("cameraSelect");
+  function updateCameraList() {
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(function (stream) {
+        navigator.mediaDevices.enumerateDevices().then(function (devices) {
+          const videoDevices = devices.filter(
+            (device) => device.kind === "videoinput",
+          );
+          cameraSelect.innerHTML = "";
+          // Tambahkan opsi default
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.text = "-- Pilih Kamera --";
+          cameraSelect.appendChild(defaultOption);
+          videoDevices.forEach((device, i) => {
+            const option = document.createElement("option");
+            option.value = device.deviceId;
+            option.text = device.label || `Kamera ${i + 1}`;
+            cameraSelect.appendChild(option);
+          });
+          // Pilih kamera pertama secara otomatis jika ada
+          if (videoDevices.length > 0) {
+            cameraSelect.value = "";
+          }
+        });
+        stream.getTracks().forEach((track) => track.stop());
+      })
+      .catch(function (err) {
+        showAlert(
+          "Tidak dapat mengakses kamera: " +
+            err +
+            "\nPastikan kamera tidak sedang digunakan aplikasi lain.",
+          "error",
+        );
+      });
+  }
+  let stream = null;
+  function startCamera() {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    const deviceId = cameraSelect.value;
+    navigator.mediaDevices
+      .getUserMedia({ video: { deviceId: { exact: deviceId } } })
+      .then((s) => {
+        video.srcObject = s;
+        stream = s;
+      })
+      .catch((err) => {
+        console.error("Error accessing camera:", err);
+        let msg = "Gagal mengakses kamera!";
+        if (err.name === "NotReadableError") {
+          msg +=
+            "\nKamera sedang digunakan aplikasi lain. Tutup aplikasi lain yang menggunakan kamera.";
+        } else if (err.name === "NotAllowedError") {
+          msg += "\nIzin akses kamera ditolak.";
+        } else {
+          msg += "\n" + err.message;
+        }
+        showAlert(msg, "error");
+      });
+  }
+  cameraSelect.addEventListener("change", startCamera);
+  updateCameraList();
+  // Tidak perlu setTimeout lagi, startCamera dipanggil otomatis setelah dropdown terisi
+
+  function capturePhoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+
+    capturedImageData = canvas.toDataURL("image/jpeg");
+
+    // Tampilkan preview
+    document.getElementById("preview-image").src = capturedImageData;
+    document.getElementById("video").style.display = "none";
+    document.getElementById("captured-preview").style.display = "block";
+    document.getElementById("capture-status").textContent =
+      "✓ Foto berhasil diambil";
+    document.getElementById("capture-status").style.color = "#10b981";
+  }
+
+  function retakePhoto() {
+    document.getElementById("video").style.display = "block";
+    document.getElementById("captured-preview").style.display = "none";
+    document.getElementById("capture-status").textContent = "";
+    capturedImageData = null;
+  }
+
+  document
+    .getElementById("registrationForm")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      if (!capturedImageData) {
+        showAlert("Silakan ambil foto wajah terlebih dahulu!", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append(
+        "employee_id",
+        document.getElementById("employee_id").value,
+      );
+      formData.append("name", document.getElementById("name").value);
+      formData.append(
+        "department",
+        document.getElementById("department").value,
+      );
+      formData.append("position", document.getElementById("position").value);
+      formData.append("image_data", capturedImageData);
+
+      // Tampilkan loading
+      const submitBtn = document.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
+      fetch("/registrasi/submit", {
+        method: "POST",
+        body: formData,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            showAlert(data.message, "success");
+            resetForm();
+          } else {
+            showAlert("Error: " + data.message, "error");
+          }
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-save"></i> Daftar Pegawai';
+        })
+        .catch((error) => {
+          showAlert("Terjadi kesalahan: " + error, "error");
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-save"></i> Daftar Pegawai';
+        });
+    });
+
+  function resetForm() {
+    document.getElementById("registrationForm").reset();
+    retakePhoto();
+  }
+</script>
+{% endblock %}
