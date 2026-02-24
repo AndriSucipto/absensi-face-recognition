@@ -1,3 +1,4 @@
+HEAD
 # Sistem Absensi Face Recognition - Web Version
 
 Aplikasi absensi pegawai dengan teknologi pengenalan wajah (face recognition) menggunakan Python dan Flask.
@@ -253,3 +254,6 @@ Jika ada pertanyaan atau masalah, silakan hubungi:
 ---
 
 **Dibuat dengan ❤️ untuk Tugas UAS Pengolahan Citra Digital**
+
+# absensi-face-recognatiaon 
+9d5ed525a9f592f025d936c830269c118620a87c
